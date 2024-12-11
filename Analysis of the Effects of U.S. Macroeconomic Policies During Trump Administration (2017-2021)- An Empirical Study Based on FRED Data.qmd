@@ -1,0 +1,407 @@
+---
+title: "SURV727 Final Project Report"
+author: "Weishan Jiang"
+format: 
+  pdf:
+    echo: false
+    warning: false
+    message: false
+editor: visual
+always_allow_html: yes
+---
+
+# Introduction
+
+The presidency of Donald Trump is from 2017 to 2021. During this period, there are four major economic policies to highlight his work. These key takeaways include:
+
+1.  Tax Cut and Job Act
+
+    This is one of the best known policies of Trump administration's economic plan.
+
+    This policy benefit for the corporations and individuals introduced in 2017, which significantly reduced the corporate tax from 35% to 21% and adjusted individual income tax brackets （Joint Committee on Taxation,2017-2018).
+
+2.  Trade policies and Tariffs
+
+    Trump administration imposed significant tariffs on goods from countries like Canada, China, Mexico, and the European Union, especially on Chinese good, leading to a trade war with China (Mallika Mitra, 2024) . This aimed to protect American industries.
+
+3.  Deregulation
+
+    The administration implemented a " two for one" rule requiring agencies to eliminate two regulations for each new one. His goal was to reduce government interference on environmental and business to encourage business growth (The American Presidency Project, 2017).
+
+4.  COVID-19 Response
+
+    To remedy and stimulus consumer spending and business activities, Trump administration took actions on CARES Act and other measures (Mallika Mitra, 2024).
+
+Despite the actions taken by Trump administration, there were also other factors influencing the economy beyond the president's control (Mallika Mitra, 2024)
+
+-   Trump inherited the longest economic growth in U.S history.
+
+-   The COVID-19 pandemic stopped the expanding economy into a recession.
+
+This study aims to investigate the economic impact during the first term of Trump's presidency. Specifically, it focuses on three key dimensions: economic growth and employment, trade policy effects, and monetary policy performance. The research questions are as follows:
+
+1.  Regarding economic growth and employment, how did the GDP growth rate,unemployment rate, and total non-farm payroll compare to the Obama era
+2.  How did Trump's trade policies affect the trade balance, total imports and exports, U.S.-China trade relations, and tariff revenue?
+3.  How effective was inflation control during the Trump administration?
+
+Getting insights from the past may help us determine whether we can predict the potential effects of the second term for Trump.
+
+Github Link：<https://github.com/Caroljiang06/SURV727-Final-Project.git>
+
+# Methods
+
+This study intends to collect FRED data from before, during, and after the Trump era (2013-2022), focusing on economic, employment, trade metrics, and monetary aspects, totaling 8 indicators. The data is obtained using the FRED API (<https://fred.stlouisfed.org/>) and downloaded .csv files from FRED to facilitate better merging. FRED data is implied from many source, such as U.S. Bureau of Economic Analysis, U.S. Bureau of Labor Statistics, Organization for Economic Co-operation and Development, and U.S. Census Bureau.
+
+I cleaned, filtered,merged and analyzed these datasets, using `ggplot2` to visualize the data and `plotly` to create interactive visualizations.
+
+# Analysis
+
+```{r}
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+install.packages("fredr", quiet = TRUE)
+library(fredr)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(readr)
+install.packages("webshot", quiet = TRUE)
+webshot::install_phantomjs()
+```
+
+```{r}
+fredr_set_key("38453aa0d6b658cbc9d9025cc42f1d35")
+```
+
+```{r, output= FALSE}
+series_ids <- c("A191RL1Q225SBEA", "UNRATE", "PAYEMS", "BOPGSTB","XTEITT01CNM156S","IMPGS", "EXPGS","B235RC1Q027SBEA", "CPIAUCSL", "CPILFESL")
+
+data_list <- lapply(series_ids, function(id) {
+  fredr(series_id = id, observation_start = as.Date("2013-01-01"), observation_end = as.Date("2022-12-31"))
+})
+
+names(data_list) <- series_ids
+head(data_list)
+
+project_data <- bind_rows(data_list, .id = "series_ids")
+head(project_data)
+```
+
+This analysis indicates the differences among the three presidents and highlights the effects on U.S. macroeconomics during the Trump administration.
+
+#### GDP Growth Rate
+
+Gross domestic product (GDP), the featured measure of U.S. output, is the market value of the goods and services produced by labor and property located in the United States.Real values are inflation-adjusted estimates—that is, estimates that exclude the effects of price changes（U.S. Bureau of Economic Analysis).
+
+This is a crucial indicator to analyze macroeconomic effect.
+
+As the graph shown below, The GDP ranged from a 0.6% to 4.8% change from the preceding period during the Trump era, except for 2020Q2 to 2020Q3, which saw a change from -28.1% to 35.2%. This trend was better than the Obama era, which ranged from -1.4% to 5.3%, but not better than the Biden period, which ranged from -1% to 7.4%. This overall trend aligns with the strong economic growth in U.S history.
+
+```{r}
+gdp_growth <- project_data %>% filter(series_ids == "A191RL1Q225SBEA")
+
+era <- data.frame(
+  start= as.Date(c("2013-01-20","2017-01-20",
+                   "2021-01-20")),
+  end = as.Date(c("2017-01-20","2021-01-20",
+                  "2022-12-31")),
+  label = c("Obama Period", "Trump Period",
+            "Biden Period")
+)
+ 
+era$mid <- as.Date((as.numeric(era$start) + as.numeric(era$end)) / 2, origin = "1970-01-01")
+```
+
+```{r}
+# visualize data
+ggplot(gdp_growth, aes(x = date, y = value)) +
+  geom_line() +
+  geom_vline(data = era, aes(xintercept = start), linetype = "dashed", color = "red") +
+  geom_vline(data = era, aes(xintercept = end), linetype = "dashed", color = "red") +
+  geom_text(data = era, aes(x = mid, y = max(gdp_growth$value), label = label), 
+            angle = 0, vjust = 2, hjust = 0.5) +
+  labs(title = "GDP Growth Rate (2013-2022)", x = "Year", y = "Percent Change from Preceding Period (%)",
+       caption = "Source: U.S. Bureau of Economic Analysis")
+
+```
+
+#### Unemployment Rate
+
+The unemployment rate represents the number of unemployed as a percentage of the labor force.
+
+It was observed that there was a decreasing trend before March 2020 under Trump's administration, ranging from 4.7% to 3.5% (with 3.5% being the lowest number since 1969). This was better than the Obama era, although it was also a declining trend, ranging from 8% to 4.7%. The unemployment rate sharply peaked at 14.8% in April 2020, then dropped to 6.4% by the end of Trump's first term in January 2021. After that, the rate continued to decline.
+
+```{r}
+unemployment <- project_data %>% filter(series_ids == "UNRATE")
+```
+
+```{r, fig.height=3}
+ggplot(unemployment, aes(x = date, y = value)) +
+  geom_line() +
+  geom_vline(data = era, aes(xintercept = start), linetype = "dashed", color = "red") +
+  geom_vline(data = era, aes(xintercept = end), linetype = "dashed", color = "red") +
+  geom_text(data = era, aes(x = mid, y = max(unemployment$value), label = label), 
+            angle = 0, vjust = 2, hjust = 0.5) +
+  labs(title = "Unemployment Rate (2013-2022)", x = "Year", y = "Percent (%)",
+       caption = "Source: U.S. Bureau of Labor Statistics")
+```
+
+#### Total Nonfarm Payroll
+
+This measure provides useful insights into the current economic situation because it can represent the number of jobs added or lost in an economy and accounts for approximately 80 percent of the workers who contribute to Gross Domestic Product (GDP).
+
+During the first three years of Trump's administration(2017-early 2020), the number of non-farm payroll employees continued to grow as Obama period, reaching a peak in February 2020. However, due to the impact of COVID-19 pandemic, the employment market experienced a sharp decline in April 2020, hitting its lowest point during the pandemic period. Subsequently, under the Biden administration, the job market began to gradually recover, with employment numbers steadily rebounding.
+
+```{r}
+nonf_emp <- project_data %>% filter(series_ids == "PAYEMS")
+```
+
+```{r, fig.height=3}
+ggplot(nonf_emp, aes(x = date, y = value)) +
+  geom_line() +
+  geom_vline(data = era, aes(xintercept = start), linetype = "dashed", color = "red") +
+  geom_vline(data = era, aes(xintercept = end), linetype = "dashed", color = "red") +
+  geom_text(data = era, aes(x = mid, y = max(nonf_emp$value), label = label), 
+            angle = 0, vjust = 2, hjust = 0.5) +
+  labs(title = "Total Nonfarm Payroll (2013-2022)", x = "Year", y = "Thousands of Persons",
+       caption = "Source: U.S. Bureau of Labor Statistics"
+       )
+```
+
+#### **Trade Balance**
+
+Although a set of measurements and policies used to control trade deficit, it was a stable fluctuation from 2013 to 2019, indicating that the polices introduced by Trump did not achieve his goal. After that, starting in 2020, the deficit increased significantly, reaching a record low of nearly -\$100 billion in 2021.In 2022, the trade deficit slightly improved from the 2021 low, fluctuating between -\$70 billion and -\$80 billion. However, it remains much higher compared to the pre-2020 levels.
+
+```{r}
+trade_balance <- project_data %>% filter(series_ids == "BOPGSTB")
+```
+
+```{r}
+ggplot(trade_balance, aes(x = date, y = value)) +
+  geom_line() +
+  geom_vline(data = era, aes(xintercept = start), linetype = "dashed", color = "red") +
+  geom_vline(data = era, aes(xintercept = end), linetype = "dashed", color = "red") +
+  geom_text(data = era, aes(x = mid, y = max(trade_balance$value), label = label), 
+            angle = 0, vjust = 2, hjust = 0.5) +
+  labs(title = "Trade Balance(2013-2022)", x = "Year", y = "Millions of Dollars",caption = "Sources: U.S. Bureau of Economic Analysis; U.S. Census Bureau")
+```
+
+#### Total Imports and Exports
+
+Both imports and exports were relatively stable, with minor fluctuations during Obama period(2013-2016), while both imports and exports declined slightly, with a steep drop in 2020 due to the pandemic during Trump period (2017-2020). However, These experienced rapid growth during Biden period, with imports increasing more sharply, contributing to a widening trade deficit.
+
+I use `plotly` to create an interactive multiple-line plot. It allows users to click to select different indicator to display, as well as smoothly to display value over different time periods by sliding.
+
+```{r}
+import <- read_csv("IMPGS.csv")
+export <- read_csv("EXPGS.csv")
+total_trade <- merge (import,export, by = "DATE",all = TRUE)
+total_trade <- total_trade %>%
+  rename(
+    imports = IMPGS,
+    exports = EXPGS
+  )
+
+total_trade_long <- total_trade %>%
+  pivot_longer(
+    cols = c("imports", "exports"),
+    names_to = "indicator",
+    values_to = "value"
+  ) 
+
+y_min <- floor(min(total_trade_long$value))
+y_max <- ceiling(max(total_trade_long$value))
+
+```
+
+```{r}
+colors <- c("imports" = "blue", "exports" = "red")
+
+trade_plot <- plot_ly(total_trade_long, x = ~DATE, y = ~value, color = ~indicator,
+             colors = colors,type = 'scatter', mode = 'lines') %>%
+  layout(title = "Total Imports and Exports (2013-2022)",
+         xaxis = list(title = "Year"),
+         yaxis = list(title = "Billions of Dollars",
+                      range = c(y_min, y_max)),
+         showlegend = TRUE,
+         margin = list(b = 100, l = 50, r = 50, t = 50),
+         annotations = list(
+           x = 1,  
+           y = -0.3,  
+           text = "Source: U.S. Bureau of Economic Analysis",
+           showarrow = FALSE,
+           xref = 'paper',
+           yref = 'paper',
+           xanchor = 'right',
+           yanchor = 'auto',
+           font = list(size = 10)
+           )
+         
+  )
+
+
+for(i in 1:nrow(era)) {
+  trade_plot <- trade_plot %>% add_annotations(
+    x = era$mid[i],
+    y = max(total_trade$import),
+    text = era$label[i],
+    showarrow = FALSE,
+    font = list(size = 12)
+  )
+  
+  trade_plot <- trade_plot %>% add_segments(
+    x = era$start[i],
+    xend = era$start[i],
+    y = y_min,
+    yend = y_max,
+    line = list(color = "red", dash = "dash"),
+    showlegend = FALSE,
+    name = era$label[i]
+  )
+}
+trade_plot
+```
+
+#### U.S.-China trade relations
+
+It is clear that China maintained a trend surplus throughout these periods. The ratio fluctuation range is narrower during Trump period than Obama period due to the 2018 U.S.-China trade war, which introduced high tariff. During the early months of 2020, the ratio dropped below 100%, likely due to the initial impact of the COVID-19 pandemic and then rebounded to around 120% . The ratio remained relatively stable during Biden period, fluctuating between 120%-140%.
+
+```{r}
+U_C_relations <- project_data %>% filter(series_ids == "XTEITT01CNM156S")
+```
+
+```{r}
+ggplot(U_C_relations, aes(x = date, y = value)) +
+  geom_line() +
+  geom_vline(data = era, aes(xintercept = start), linetype = "dashed", color = "red") +
+  geom_vline(data = era, aes(xintercept = end), linetype = "dashed", color = "red") +
+  geom_text(data = era, aes(x = mid, y = max(U_C_relations$value), label = label), 
+            angle = 0, vjust = 2, hjust = 0.5) +
+  labs(title = "International Trade Ratio of Export to Import for China(2013-2022)", x = "Year", y = "Percent",
+       caption = "Source: Organization for Economic Co-operation and Development")
+```
+
+#### Tariff Revenue
+
+The most dramatic change occurred during Trump's period. The sharp upward trend began in 2018 with revenue increasing from around 40 billion to approximately 85 billion dollars, coinciding with the implementation of the new tariff policies. After that, revenue significantly dipped in early 2020 due to the impact of COVID-19. Although there was initial growth during Biden's presidency, a notable downward trend was obsered at the end of 2022.
+
+```{r}
+tariff_rev <- project_data %>% filter(series_ids == "B235RC1Q027SBEA")
+```
+
+```{r}
+ggplot(tariff_rev, aes(x = date, y = value)) +
+  geom_line() +
+  geom_vline(data = era, aes(xintercept = start), linetype = "dashed", color = "red") +
+  geom_vline(data = era, aes(xintercept = end), linetype = "dashed", color = "red") +
+  geom_text(data = era, aes(x = mid, y = max(tariff_rev$value), label = label), 
+            angle = 0, vjust = 2, hjust = 0.5) +
+  labs(title = "Tariff Revenue(2013-2022)", x = "Year", y = "Billions of Dollars",
+       caption = "Source: U.S. Bureau of Economic Analysis")
+```
+
+#### The Consumer Price Index for All Urban Consumers(CPI)
+
+In the early period of the Obama administration, the CPI remained steadily at around 0.8% to 2.2%, then dropped to 0.2%, and finally reached 2.5% at the end of 2016. During the Trump period, this indicator fluctuated around 2.1% to 2.8% for the CPI with all items and remained steadily fluctuating for the CPI with all items less food and energy, similar to the Obama period. However, there was a sharp inflation after January 2021 during the Biden period in both the CPI with all items and the CPI with all items less food and energy.
+
+I use `plotly` to create an interactive multiple-line plot. It allows users to click to select different indicator to display, as well as smoothly to display value over different time periods by sliding.
+
+```{r}
+cpiauscl <- read_csv("CPIAUCSL.csv")
+cpilfesl <- read_csv("CPILFESL.csv")
+cpi<- merge (cpiauscl,cpilfesl, by = "DATE",all = TRUE)
+cpi <- cpi %>%
+  rename(
+    all_item = CPIAUCSL_PC1,
+    all_item_core = CPILFESL_PC1
+  )
+
+
+cpi_long <- cpi %>%
+  pivot_longer(
+    cols = c("all_item", "all_item_core"),
+    names_to = "indicator",
+    values_to = "value"
+  ) 
+
+y_min <- floor(min(cpi_long$value))
+y_max <- ceiling(max(cpi_long$value))
+```
+
+```{r}
+colors <- c("all_item" = "blue", "all_item_core" = "red")
+
+cpi_plot <- plot_ly(cpi_long, x = ~DATE, y = ~value, color = ~indicator,
+             colors = colors,type = 'scatter', mode = 'lines') %>%
+  layout(title = "The Consumer Price Index for All Urban Consumers (2013-2022)",
+         xaxis = list(title = "Year"),
+         yaxis = list(title = "Percent Change from Year Ago",
+                      range = c(y_min, y_max)),
+         showlegend = TRUE,
+         margin = list(b = 100, l = 50, r = 50, t = 50),
+         annotations = list(
+           x = 1,  
+           y = -0.3,  
+           text = "Source: U.S. Bureau of Labor Statistics",
+           showarrow = FALSE,
+           xref = 'paper',
+           yref = 'paper',
+           xanchor = 'right',
+           yanchor = 'auto',
+           font = list(size = 10)
+           )
+)
+
+for(i in 1:nrow(era)) {
+  cpi_plot <- cpi_plot %>% add_annotations(
+    x = era$mid[i],
+    y = max(cpi$all_item),
+    text = era$label[i],
+    showarrow = FALSE,
+    font = list(size = 12)
+  )
+  
+  cpi_plot <- cpi_plot %>% add_segments(
+    x = era$start[i],
+    xend = era$start[i],
+    y = y_min,
+    yend = y_max,
+    line = list(color = "red", dash = "dash"),
+    showlegend = FALSE,
+    name = era$label[i]
+  )
+}
+cpi_plot
+```
+
+# Conclusion
+
+### Findings
+
+Based on the analysis above, from the superficial aspect and macroeconomic perspective, "Trumponomics" has succeeded in promoting economic prosperity for all for his first three years, supporting the argument that President Trump's pro-growth policies have led to a economic boom that is lifting up Americans of all backgrounds (The American Presidency Project, 2019).
+
+The unemployment rate fell below 4% for the first time and reached its lowest point of 3.5% since 1969, remaining below 4% for most of Trump's period. He also make efforts to narrow the trade deficit with China, although the overall trad deficit increased during his presidency. Notably, he managed to control the CPI even during the 2020 pandemic, which was better than Obama and Biden presidencies. Moreover, his historic deregulation efforts are driving economic growth, cutting unnecessary costs, and increasing transparency (The American Presidency Project, 2019).
+
+However, most of the prosperity came to a halt in 2020.
+
+There are two main aspects that influenced the economy during the Trump administration but were out of his control. One is the long-lasting prosperous and thriving economy, and the other is the black swan event: COVID-19. Impacted by COVID-19, extreme values emerged in every indicator, and the economy fell into a recession, indicating that Trump administration lost control of the pandemic.
+
+Critics argue that the benefits of tax cuts were distributed unevenly and heavily faovored wealthy individuals and corporations, and that the deregulation changes benefited corporations at the expense of public health, the environment, and consumer safety (Nemanja Curcic, 2024).
+
+### Limitations
+
+It is hard to say whether the economy would be better under Trump's second term administration. The first reason is that macroeconomic performance depends heavily on external factors, such as global economic trends, geopolitical developments, and unforeseen events like pandemic or financial crises. While certain policies, such as tax cuts or deregulation, might stimulate short-term growth, their long-term effects on income inequality, public debt, and environmental sustainability remain contested.
+
+The second reason is that the effects of policies take a long time to become explicit. During Trump's first term, the administration faced significant resistance to many of its initiatives, which may persist or even escalate in future terms, potentially hindering economic progress.
+
+Although we cannot predict the future economy under Trump's second term presidency, we can foresee that the policies introduced by Trump in the future may learn from past lessons and focus on deregulation and tariff to "make America greater" as his slogan suggests.
+
+This study only focuses on how the policies stimulated on macroeconomic in the short term during Trump's first term. Further research is needed to clarify the deeper relationship between policies and macroeconomic outcomes.
+
+# References
+
+1.  House. 2018. "[H.R.1 - An Act to provide for reconciliation pursuant to titles II and V of the concurrent resolution on the budget for fiscal year 2018"](https://www.congress.gov/bill/115th-congress/house-bill/1)
+2.  Mallika Mitra. 2024. "[The Economic Impact of Donald Trump’s Presidency](https://www.investopedia.com/donald-trump-presidency-economic-impact-8666666)"
+3.  **The American Presidency Project. 2017. "[Press Release - President Donald J. Trump is Delivering on Deregulation](https://www.presidency.ucsb.edu/documents/press-release-president-donald-j-trump-delivering-deregulation)",**
+4.  **The American Presidency Project. 2019. "[Fact Sheet - President Donald J. Trump Has Delivered Record Breaking Results For The American People In His First Three Years In Office](https://www.presidency.ucsb.edu/documents/fact-sheet-president-donald-j-trump-has-delivered-record-breaking-results-for-the-american)"**
+5.  Nemanja Curcic. 2024. "[**Was the Economy Better Under Trump? Lessons from the Past and What’s Next**](https://finbold.com/guide/was-the-economy-better-under-trump/)**"**
